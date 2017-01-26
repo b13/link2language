@@ -51,7 +51,12 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
         }
         if (strpos($id, '&L=') !== false) {
             list($id, $language) = explode('&L=' , $id);
-        }
+        } elseif (isset($linkParts['params']) && strpos($linkParts['params'], '&L=') !== false) {
+            $parameters = GeneralUtility::explodeUrl2Array($linkParts['params']);
+            $language = (int)$parameters['L'];
+            unset($parameters['L']);
+            $linkParts['params'] = GeneralUtility::implodeArrayForUrl('', $parameters);
+	}
         // Checking if the id-parameter is an alias.
         if (!MathUtility::canBeInterpretedAsInteger($id)) {
             $records = BackendUtility::getRecordsByField('pages', 'alias', $id);
@@ -132,7 +137,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
         }
 
         $fieldDefinitions['language'] = '
-				<form action="" name="llanguageform" id="llanguageform" class="t3js-dummyform">
+				<form action="" name="llanguageform" id="llanguageform" class="t3js-dummyform" style="margin-top: 10px;">
 					<table border="0" cellpadding="2" cellspacing="1" id="typo3-linkClass">
 						<tr>
 							<td style="width: 120px;">Specific Language</td>

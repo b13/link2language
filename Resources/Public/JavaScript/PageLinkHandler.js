@@ -87,7 +87,7 @@ define(['jquery', 'TYPO3/CMS/Recordlist/LinkBrowser', 'TYPO3/CMS/Recordlist/Page
     PageLinkHandler.fetchLanguageValue = function()
     {
         var attributeValues = LinkBrowser.getLinkAttributeValues();
-        return attributeValues.language;
+        return (typeof attributeValues.language === 'undefined' ? '' : attributeValues.language);
     };
 
     $(function() {
