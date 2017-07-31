@@ -14,6 +14,8 @@ namespace CMSExperts\Link2Language;
  * The TYPO3 project - inspiring people to share!
  */
 
+use TYPO3\CMS\Core\Html\RteHtmlParser;
+
 /**
  * Hook to remove the attribute "language"
  */

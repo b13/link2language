@@ -33,11 +33,10 @@ define(['jquery', 'TYPO3/CMS/Recordlist/LinkBrowser', 'TYPO3/CMS/Recordlist/Page
     PageLinkHandler.linkPage = function(event) {
         event.preventDefault();
 
-        var id = $(this).data('id');
-        var anchor = $(this).data('anchor');
+        var id = $(this).attr('href');
 
         id = PageLinkHandler.addLanguageValueToCurrentValue(id);
-        LinkBrowser.finalizeFunction('page:' + id + (anchor ? anchor : ''));
+        LinkBrowser.finalizeFunction(id);
     };
 
     /**
@@ -53,7 +52,7 @@ define(['jquery', 'TYPO3/CMS/Recordlist/LinkBrowser', 'TYPO3/CMS/Recordlist/Page
         }
 
         value = PageLinkHandler.addLanguageValueToCurrentValue(value);
-        LinkBrowser.finalizeFunction('page:' + value);
+        LinkBrowser.finalizeFunction(value);
     };
 
     /**
@@ -64,7 +63,7 @@ define(['jquery', 'TYPO3/CMS/Recordlist/LinkBrowser', 'TYPO3/CMS/Recordlist/Page
         event.preventDefault();
 
         var value = PageLinkHandler.addLanguageValueToCurrentValue(PageLinkHandler.currentLink);
-        LinkBrowser.finalizeFunction('page:' + value);
+        LinkBrowser.finalizeFunction(value);
     };
 
 
@@ -92,6 +91,7 @@ define(['jquery', 'TYPO3/CMS/Recordlist/LinkBrowser', 'TYPO3/CMS/Recordlist/Page
 
     $(function() {
         PageLinkHandler.currentLink = $('body').data('currentLink');
+        console.debug(PageLinkHandler.currentLink);
 
         // remove the click events for the original link handler
         $('a.t3js-pageLink').off('click', OriginalPageLinkHandler.linkPage).on('click', PageLinkHandler.linkPage);

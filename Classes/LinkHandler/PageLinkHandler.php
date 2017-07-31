@@ -14,11 +14,11 @@ namespace CMSExperts\Link2Language\LinkHandler;
  * The TYPO3 project - inspiring people to share!
  */
 
+use Doctrine\DBAL\Query\QueryBuilder;
 use Psr\Http\Message\ServerRequestInterface;
-use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Utility\MathUtility;
 use TYPO3\CMS\Recordlist\LinkHandler\LinkHandlerInterface;
 use TYPO3\CMS\Recordlist\Tree\View\LinkParameterProviderInterface;
 
@@ -36,48 +36,19 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
      */
     public function canHandleLink(array $linkParts)
     {
-        if (!$linkParts['url']) {
-            return false;
-        }
+        $res = parent::canHandleLink($linkParts);
 
-        $id = $linkParts['url'];
-        $language = '';
-        $parts = explode('#', $id);
-        if (count($parts) > 1) {
-            $id = $parts[0];
-            $anchor = $parts[1];
-        } else {
-            $anchor = '';
-        }
-        if (strpos($id, '&L=') !== false) {
-            list($id, $language) = explode('&L=' , $id);
-        } elseif (isset($linkParts['params']) && strpos($linkParts['params'], '&L=') !== false) {
-            $parameters = GeneralUtility::explodeUrl2Array($linkParts['params']);
-            $language = (int)$parameters['L'];
-            unset($parameters['L']);
-            $linkParts['params'] = GeneralUtility::implodeArrayForUrl('', $parameters);
-	}
-        // Checking if the id-parameter is an alias.
-        if (!MathUtility::canBeInterpretedAsInteger($id)) {
-            $records = BackendUtility::getRecordsByField('pages', 'alias', $id);
-            if (empty($records)) {
-                return false;
+        // Extract the language parameter
+        if (isset($linkParts['url']['parameters'])) {
+            $parameters = GeneralUtility::explodeUrl2Array($linkParts['url']['parameters']);
+            if (isset($parameters['L'])) {
+                $language = (int)$parameters['L'];
+                unset($parameters['L']);
+                $linkParts['url']['parameters'] = GeneralUtility::implodeArrayForUrl('', $parameters);
+                $this->linkParts['language'] = (int)$language;
             }
-            $id = (int)$records[0]['uid'];
         }
-        $pageRow = BackendUtility::getRecordWSOL('pages', $id);
-        if (!$pageRow) {
-            return false;
-        }
-
-        $this->linkParts = $linkParts;
-        $this->linkParts['pageid'] = $id;
-        if ($language !== '') {
-            $this->linkParts['language'] = (int)$language;
-        }
-        $this->linkParts['anchor'] = $anchor;
-
-        return true;
+        return $res;
     }
 
     /**
@@ -123,12 +94,12 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
      * Add the language selector to the settings
      *
      * @param $fieldDefinitions
-     * @return mixed
+     * @return array
      */
     protected function addLanguageSelector($fieldDefinitions)
     {
         array_push($this->linkAttributes, 'language');
-        $languages = $GLOBALS['TYPO3_DB']->exec_SELECTgetRows('uid, title', 'sys_language', 'hidden=0', '', 'uid');
+        $languages = $this->getAllLanguages();
         $options = ['<option value=""></option>'];
 
         $options[] = '<option value="0"' . ($this->linkParts['language'] === 0 ? ' selected="selected"' : '') . '>Default Language</option>';
@@ -137,15 +108,34 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
         }
 
         $fieldDefinitions['language'] = '
-				<form action="" name="llanguageform" id="llanguageform" class="t3js-dummyform" style="margin-top: 10px;">
-					<table border="0" cellpadding="2" cellspacing="1" id="typo3-linkClass">
-						<tr>
-							<td style="width: 120px;">Specific Language</td>
-							<td><select name="llanguage" class="typo3-link-input">' . implode(CRLF, $options) . '</select></td>
-						</tr>
-					</table>
+				<form action="" name="llanguageform" id="llanguageform" class="t3js-dummyform form-horizontal">
+				<div class="form-group form-group-sm">
+				    <label class="col-xs-4 control-label">Specific Language</label> 
+                    <div class="col-xs-8">
+                        <select name="llanguage" class="form-control">' . implode(CRLF, $options) . '</select>
+                    </div>
+                </div>
 				</form>
 ';
         return $fieldDefinitions;
+    }
+
+    /**
+     * Short-hand function to select all registered languages
+     *
+     * @return array
+     */
+    protected function getAllLanguages()
+    {
+        /** @var QueryBuilder $queryBuilder */
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('sys_language');
+        return $queryBuilder
+            ->select('uid', 'title')
+            ->from('sys_language')
+            ->where(
+                $queryBuilder->expr()->eq('hidden', 0)
+            )
+            ->execute()
+            ->fetchAll();
     }
 }
