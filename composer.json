@@ -5,7 +5,7 @@
 	"license": "GPL-2.0+",
 	"keywords": ["TYPO3 CMS", "Link Handler", "Links", "Language"],
 	"require": {
-		"typo3/cms": "^8.7"
+		"typo3/cms": "^8.7 || ^9.5"
 	},
 	"autoload": {
 		"psr-4": {
