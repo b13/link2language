@@ -21,7 +21,7 @@ when the extension is installed, no configuration needed.
 ## How to install this extension?
 
 You can set this up via composer (`composer require cmsexperts/link2language`) or via
-TER (extension name "link2language"), it runs with TYPO3 v8 LTS and TYPO3 v9 LTS (use v0.1.0 for v7 LTS).
+TER (extension name "link2language"), it runs with TYPO3 v8 LTS, TYPO3 v9 LTS and TYPO3 v10 (use v0.1.0 for v7 LTS).
 
 ## License
 
