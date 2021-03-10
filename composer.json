@@ -11,5 +11,10 @@
 		"psr-4": {
 			"CMSExperts\\Link2language\\": "Classes/"
 		}
+	},
+	"extra": {
+		"typo3/cms": {
+			"extension-key": "link2language"
+		}
 	}
 }
