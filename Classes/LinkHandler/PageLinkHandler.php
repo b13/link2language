@@ -1,24 +1,29 @@
 <?php
-namespace CMSExperts\Link2Language\LinkHandler;
+namespace B13\Link2Language\LinkHandler;
 
 /*
- * This file is part of the TYPO3 CMS project.
+ * This file is part of TYPO3 CMS-based extension "link2language" by b13.
  *
  * It is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License, either version 2
  * of the License, or any later version.
- *
- * For the full copyright and license information, please read the
- * LICENSE.txt file that was distributed with this source code.
- *
- * The TYPO3 project - inspiring people to share!
  */
 
 use Doctrine\DBAL\Query\QueryBuilder;
 use Psr\Http\Message\ServerRequestInterface;
+use TYPO3\CMS\Backend\Configuration\TranslationConfigurationProvider;
+use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Backend\View\BackendLayoutView;
+use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Restriction\BackendWorkspaceRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Imaging\Icon;
+use TYPO3\CMS\Core\LinkHandling\LinkService;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\MathUtility;
+use TYPO3\CMS\Recordlist\Controller\AbstractLinkBrowserController;
 use TYPO3\CMS\Recordlist\LinkHandler\LinkHandlerInterface;
 use TYPO3\CMS\Recordlist\Tree\View\LinkParameterProviderInterface;
 
@@ -28,6 +33,20 @@ use TYPO3\CMS\Recordlist\Tree\View\LinkParameterProviderInterface;
  */
 class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler implements LinkHandlerInterface, LinkParameterProviderInterface
 {
+
+    /**
+     * Initialize the handler
+     *
+     * @param AbstractLinkBrowserController $linkBrowser
+     * @param string $identifier
+     * @param array $configuration Page TSconfig
+     */
+    public function initialize(AbstractLinkBrowserController $linkBrowser, $identifier, array $configuration)
+    {
+        parent::initialize($linkBrowser, $identifier, $configuration);
+        $this->view->setTemplateRootPaths([200 => 'EXT:link2language/Resources/Private/Templates/LinkBrowser']);
+    }
+
     /**
      * Checks if this is the handler for the given link, and also checks for a language parameter
      *
@@ -110,7 +129,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
         $fieldDefinitions['language'] = '
 				<form action="" name="llanguageform" id="llanguageform" class="t3js-dummyform form-horizontal">
 				<div class="form-group form-group-sm">
-				    <label class="col-xs-4 control-label">Specific Language</label> 
+				    <label class="col-xs-4 control-label">Specific Language</label>
                     <div class="col-xs-8">
                         <select name="llanguage" class="form-control">' . implode(CRLF, $options) . '</select>
                     </div>
@@ -138,4 +157,101 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
             ->execute()
             ->fetchAll();
     }
+
+    /**
+     * This adds all content elements on a page to the view and lets you create a link to the element.
+     *
+     * @param int $pageId Page uid to expand
+     */
+    protected function getRecordsOnExpandedPage($pageId)
+    {
+        // If there is an anchor value (content element reference) in the element reference, then force an ID to expand:
+        if (!$pageId && isset($this->linkParts['url']['fragment']) && isset($this->linkParts['url']['fragment'])) {
+            // Set to the current link page id.
+            $pageId = $this->linkParts['url']['pageuid'];
+        }
+        // Draw the record list IF there is a page id to expand:
+        if ($pageId && MathUtility::canBeInterpretedAsInteger($pageId) && $this->getBackendUser()->isInWebMount($pageId)) {
+            $pageId = (int)$pageId;
+
+            $activePageRecord = BackendUtility::getRecordWSOL('pages', $pageId);
+            $this->view->assign('expandActivePage', true);
+
+            // Create header for listing, showing the page title/icon
+            $this->view->assign('activePage', $activePageRecord);
+            $this->view->assign('activePageTitle', BackendUtility::getRecordTitle('pages', $activePageRecord, true));
+            $this->view->assign('activePageIcon', $this->iconFactory->getIconForRecord('pages', $activePageRecord, Icon::SIZE_SMALL)->render());
+
+            // Look up tt_content elements from the expanded page
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+                ->getQueryBuilderForTable('tt_content');
+
+            $queryBuilder->getRestrictions()
+                ->removeAll()
+                ->add(GeneralUtility::makeInstance(DeletedRestriction::class))
+                ->add(GeneralUtility::makeInstance(BackendWorkspaceRestriction::class));
+
+            $contentElements = $queryBuilder
+                ->select('*')
+                ->from('tt_content')
+                ->where(
+                    $queryBuilder->expr()->andX(
+                        $queryBuilder->expr()->eq(
+                            'pid',
+                            $queryBuilder->createNamedParameter($pageId, \PDO::PARAM_INT)
+                        ),
+                        $queryBuilder->expr()->orX(
+                            $queryBuilder->expr()->in(
+                                'sys_language_uid',
+                                $queryBuilder->createNamedParameter([0, -1], Connection::PARAM_INT_ARRAY)
+                            ),
+                            $queryBuilder->expr()->andX(
+                                $queryBuilder->expr()->gt(
+                                    'sys_language_uid',
+                                    $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)
+                                ),
+                                $queryBuilder->expr()->eq(
+                                    'l18n_parent',
+                                    $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)
+                                )
+                            )
+                        )
+                    )
+                )
+                ->orderBy('colPos')
+                ->addOrderBy('sorting')
+                ->execute()
+                ->fetchAll();
+
+            $colPosArray = GeneralUtility::callUserFunction(BackendLayoutView::class . '->getColPosListItemsParsed', $pageId, $this);
+            $languages = GeneralUtility::makeInstance(TranslationConfigurationProvider::class)->getSystemLanguages($pageId);
+
+            $colPosMapping = [];
+            foreach ($colPosArray as $colPos) {
+                $colPosMapping[(int)$colPos[1]] = $colPos[0];
+            }
+            // Enrich list of records
+            $groupedContentElements = [];
+            foreach ($contentElements as &$contentElement) {
+                $languageId = (int)$contentElement['sys_language_uid'];
+                if (!isset($groupedContentElements[$languageId])) {
+                    $groupedContentElements[$languageId] = [
+                        'label' => $languages[$languageId]['title'],
+                        'flag' => $this->iconFactory->getIcon($languages[$languageId]['flagIcon'], Icon::SIZE_SMALL),
+                        'items' => []
+                    ];
+                }
+                $contentElement['colPosLabel'] = $colPosMapping[(int)$contentElement['colPos']];
+                $contentElement['url'] = GeneralUtility::makeInstance(LinkService::class)->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
+                $contentElement['isSelected'] = !empty($this->linkParts) && (int)$this->linkParts['url']['fragment'] === (int)$contentElement['uid'];
+                $contentElement['icon'] = $this->iconFactory->getIconForRecord('tt_content', $contentElement, Icon::SIZE_SMALL)->render();
+                $contentElement['title'] = BackendUtility::getRecordTitle('tt_content', $contentElement, true);
+                $groupedContentElements[$languageId]['items'][] = $contentElement;
+            }
+            ksort($groupedContentElements);
+            $this->view->assign('contentElements', $contentElements);
+            $this->view->assign('groupedContentElements', $groupedContentElements);
+        }
+    }
+
 }

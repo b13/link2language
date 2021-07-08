@@ -91,7 +91,6 @@ define(['jquery', 'TYPO3/CMS/Recordlist/LinkBrowser', 'TYPO3/CMS/Recordlist/Page
 
     $(function() {
         PageLinkHandler.currentLink = $('body').data('currentLink');
-        console.debug(PageLinkHandler.currentLink);
 
         // remove the click events for the original link handler
         $('a.t3js-pageLink').off('click', OriginalPageLinkHandler.linkPage).on('click', PageLinkHandler.linkPage);

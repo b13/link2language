@@ -1,15 +1,15 @@
 {
-	"name": "cmsexperts/link2language",
+	"name": "b13/link2language",
 	"type": "typo3-cms-extension",
 	"description": "Set Links with a specific language parameter",
 	"license": "GPL-2.0+",
 	"keywords": ["TYPO3 CMS", "Link Handler", "Links", "Language"],
 	"require": {
-		"typo3/cms-core": "^8.7 || ^9.5 || ^10"
+		"typo3/cms-core": "^9.5 || ^10.4"
 	},
 	"autoload": {
 		"psr-4": {
-			"CMSExperts\\Link2language\\": "Classes/"
+			"B13\\Link2language\\": "Classes/"
 		}
 	},
 	"extra": {
