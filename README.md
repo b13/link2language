@@ -40,9 +40,6 @@ If you find an issue, feel free to create an issue on GitHub or a pull request.
 
 ## ToDo
 
-- Editors can choose any language right now, this should be limited to the editor rights.
-- Site Configuration should be utilized.
-- The dropdown should only show up if there are actually multiple languages in the system.
 - The labels should be localizable.
 - It is not possible to modify the "L=" parameter, if any other is used.
 - The extension removes any additional parameters after &L= from the links selected, this might
