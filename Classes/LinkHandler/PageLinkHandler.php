@@ -21,6 +21,8 @@ use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Imaging\Icon;
 use TYPO3\CMS\Core\LinkHandling\LinkService;
 use TYPO3\CMS\Core\Page\PageRenderer;
+use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
 use TYPO3\CMS\Recordlist\Controller\AbstractLinkBrowserController;
@@ -120,10 +122,8 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
         array_push($this->linkAttributes, 'language');
         $languages = $this->getAllLanguages();
         $options = ['<option value=""></option>'];
-
-        $options[] = '<option value="0"' . ($this->linkParts['language'] === 0 ? ' selected="selected"' : '') . '>Default Language</option>';
         foreach ($languages as $language) {
-            $options[] = '<option value="' . $language['uid'] . '"' . ($this->linkParts['language'] === (int)$language['uid'] ? ' selected="selected"' : '') . '>' . htmlspecialchars($language['title']) . '</option>';
+            $options[] = '<option value="' . $language->getLanguageId() . '"' . ($this->linkParts['language'] === $language->getLanguageId() ? ' selected="selected"' : '') . '>' . htmlspecialchars($language->getTitle()) . '</option>';
         }
 
         $fieldDefinitions['language'] = '
@@ -142,20 +142,12 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
     /**
      * Short-hand function to select all registered languages
      *
-     * @return array
+     * @return SiteLanguage[]
      */
     protected function getAllLanguages()
     {
-        /** @var QueryBuilder $queryBuilder */
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('sys_language');
-        return $queryBuilder
-            ->select('uid', 'title')
-            ->from('sys_language')
-            ->where(
-                $queryBuilder->expr()->eq('hidden', 0)
-            )
-            ->execute()
-            ->fetchAll();
+        $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByPageId($this->linkParts['url']['pageuid'] ?? 0);
+        return $site->getAvailableLanguages($this->getBackendUser());
     }
 
     /**
@@ -241,12 +233,24 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                         'items' => []
                     ];
                 }
-                $contentElement['colPosLabel'] = $colPosMapping[(int)$contentElement['colPos']];
-                $contentElement['url'] = GeneralUtility::makeInstance(LinkService::class)->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
+
+                $colPos = (int)$contentElement['colPos'];
+                if (!isset($groupedContentElements[$languageId]['items'][$colPos])) {
+                    $groupedContentElements[$languageId]['items'][$colPos] = [
+                        'label' => $colPosMapping[(int)$contentElement['colPos']],
+                        'items' => []
+                    ];
+                }
+
+                if ($languageId > 0) {
+                    $contentElement['url'] = GeneralUtility::makeInstance(LinkService::class)->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $languageId, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
+                } else {
+                    $contentElement['url'] = GeneralUtility::makeInstance(LinkService::class)->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
+                }
                 $contentElement['isSelected'] = !empty($this->linkParts) && (int)$this->linkParts['url']['fragment'] === (int)$contentElement['uid'];
                 $contentElement['icon'] = $this->iconFactory->getIconForRecord('tt_content', $contentElement, Icon::SIZE_SMALL)->render();
                 $contentElement['title'] = BackendUtility::getRecordTitle('tt_content', $contentElement, true);
-                $groupedContentElements[$languageId]['items'][] = $contentElement;
+                $groupedContentElements[$languageId]['items'][$colPos]['items'][] = $contentElement;
             }
             ksort($groupedContentElements);
             $this->view->assign('contentElements', $contentElements);

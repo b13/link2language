@@ -23,20 +23,23 @@
 						</span>
 						<f:for each="{groupedContentElements}" as="groupedByLanguage">
 							<h4>{groupedByLanguage.flag -> f:format.raw()} {groupedByLanguage.label}</h4>
-							<ul>
-								<f:for each="{groupedByLanguage.items}" as="content">
-									<li{f:if(condition: content.isSelected, then: ' class="active"')}>
-									<span class="list-tree-group">
-										<span class="list-tree-icon">{content.icon -> f:format.raw()}</span>
-										<span class="list-tree-title">
-											<a href="{content.url}" class="t3js-pageLink">
-												{content.title -> f:format.raw()} (Column: {content.colPosLabel})
-											</a>
-										</span>
-									</span>
-									</li>
+								<f:for each="{groupedByLanguage.items}" as="groupedContentByColPos">
+									<h5>Column: {groupedContentByColPos.label}</h5>
+									<ul>
+										<f:for each="{groupedContentByColPos.items}" as="content">
+											<li{f:if(condition: content.isSelected, then: ' class="active"')}>
+											<span class="list-tree-group">
+												<span class="list-tree-icon">{content.icon -> f:format.raw()}</span>
+												<span class="list-tree-title">
+													<a href="{content.url}" class="t3js-pageLink">
+														{content.title -> f:format.raw()}
+													</a>
+												</span>
+											</span>
+											</li>
+										</f:for>
+									</ul>
 								</f:for>
-							</ul>
 						</f:for>
 					</li>
 				</ul>

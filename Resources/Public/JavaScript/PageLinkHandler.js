@@ -74,11 +74,13 @@ define(['jquery', 'TYPO3/CMS/Recordlist/LinkBrowser', 'TYPO3/CMS/Recordlist/Page
      */
     PageLinkHandler.addLanguageValueToCurrentValue = function(input) {
         var language = PageLinkHandler.fetchLanguageValue();
-        if (typeof input === 'string' && input.indexOf('&L=') !== -1) {
-            input = input.substr(0, input.indexOf('&L='));
-        }
         if (language !== '') {
-            input = input + '&L=' + language;
+            var fragment = '';
+            if (typeof input === 'string' && input.indexOf('&L=') !== -1) {
+              fragment = input.substr(input.indexOf('#'));
+              input = input.substr(0, input.indexOf('&L='));
+            }
+            input = input + '&L=' + language + fragment;
         }
         return input;
     };
