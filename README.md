@@ -11,12 +11,12 @@ allowing to link to a page in a different language.
 The simplest way would be to link to the login page in a different language, with an automatic
 redirect.
 
-However the real strength of the extension pays off when having multiple page trees with different
+However the real strength of this extension pays off when having multiple page trees with different
 languages to link to a properly available news.
 
-The extension adds an additional select dropdown to editors in the Link selector popup, when linking
-an image, or linking a text in the Rich Text Editor. This dropdown is always enabled
-when the extension is installed, no configuration needed.
+The extension shows a specific button for each language that is available for this page, when
+linking an image, or linking a text in the Rich Text Editor. The language selection is
+always enabled when the extension is installed, no configuration needed.
 
 ## Linking to "free mode" content elements
 
@@ -41,10 +41,6 @@ If you find an issue, feel free to create an issue on GitHub or a pull request.
 ## ToDo
 
 - The labels should be localizable.
-- It is not possible to modify the "L=" parameter, if any other is used.
-- The extension removes any additional parameters after &L= from the links selected, this might
-especially be a problem when other extensions extend the page linking as well.
-
 
 ### Credits
 

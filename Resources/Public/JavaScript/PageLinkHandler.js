@@ -95,9 +95,9 @@ define(['jquery', 'TYPO3/CMS/Recordlist/LinkBrowser', 'TYPO3/CMS/Recordlist/Page
         PageLinkHandler.currentLink = $('body').data('currentLink');
 
         // remove the click events for the original link handler
-        $('a.t3js-pageLink').off('click', OriginalPageLinkHandler.linkPage).on('click', PageLinkHandler.linkPage);
-        $('input.t3js-linkCurrent').off('click', OriginalPageLinkHandler.linkCurrent).on('click', PageLinkHandler.linkCurrent);
-        $('input.t3js-pageLink').off('click', OriginalPageLinkHandler.linkPageByTextfield).on('click', PageLinkHandler.linkPageByTextfield);
+        //$('a.t3js-pageLink').off('click', OriginalPageLinkHandler.linkPage).on('click', PageLinkHandler.linkPage);
+      //$('input.t3js-linkCurrent').off('click', OriginalPageLinkHandler.linkCurrent).on('click', PageLinkHandler.linkCurrent);
+      //$('input.t3js-pageLink').off('click', OriginalPageLinkHandler.linkPageByTextfield).on('click', PageLinkHandler.linkPageByTextfield);
     });
 
     return PageLinkHandler;

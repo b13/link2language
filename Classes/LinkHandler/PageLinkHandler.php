@@ -18,6 +18,8 @@ use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\Restriction\BackendWorkspaceRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Domain\Repository\PageRepository;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Imaging\Icon;
 use TYPO3\CMS\Core\LinkHandling\LinkService;
 use TYPO3\CMS\Core\Page\PageRenderer;
@@ -50,29 +52,6 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
     }
 
     /**
-     * Checks if this is the handler for the given link, and also checks for a language parameter
-     *
-     * @param array $linkParts Link parts as returned from TypoLinkCodecService
-     * @return bool
-     */
-    public function canHandleLink(array $linkParts)
-    {
-        $res = parent::canHandleLink($linkParts);
-
-        // Extract the language parameter
-        if (isset($linkParts['url']['parameters'])) {
-            $parameters = GeneralUtility::explodeUrl2Array($linkParts['url']['parameters']);
-            if (isset($parameters['L'])) {
-                $language = (int)$parameters['L'];
-                unset($parameters['L']);
-                $linkParts['url']['parameters'] = GeneralUtility::implodeArrayForUrl('', $parameters);
-                $this->linkParts['language'] = (int)$language;
-            }
-        }
-        return $res;
-    }
-
-    /**
      * Add the JS module as well
      *
      * @param ServerRequestInterface $request
@@ -81,62 +60,9 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
      */
     public function render(ServerRequestInterface $request)
     {
-        GeneralUtility::makeInstance(PageRenderer::class)->loadRequireJsModule('TYPO3/CMS/Recordlist/PageLinkHandler');
-        GeneralUtility::makeInstance(PageRenderer::class)->loadRequireJsModule('TYPO3/CMS/Link2language/PageLinkHandler');
+        //GeneralUtility::makeInstance(PageRenderer::class)->loadRequireJsModule('TYPO3/CMS/Recordlist/PageLinkHandler');
+        //GeneralUtility::makeInstance(PageRenderer::class)->loadRequireJsModule('TYPO3/CMS/Link2language/PageLinkHandler');
         return parent::render($request);
-    }
-
-    /**
-     * Add the language part to the body tag attributes as well
-     *
-     * @return string[] Array of body-tag attributes
-     */
-    public function getBodyTagAttributes()
-    {
-        $bodyTagAttributes = parent::getBodyTagAttributes();
-        $bodyTagAttributes['data-language'] = $this->linkParts['language'];
-        return $bodyTagAttributes;
-    }
-
-    /**
-     * Allow to add the language selector as link attribute as well
-     *
-     * @param string[] $fieldDefinitions Array of link attribute field definitions
-     * @return string[]
-     */
-    public function modifyLinkAttributes(array $fieldDefinitions)
-    {
-        $fieldDefinitions = parent::modifyLinkAttributes($fieldDefinitions);
-        $fieldDefinitions = $this->addLanguageSelector($fieldDefinitions);
-        return $fieldDefinitions;
-    }
-
-    /**
-     * Add the language selector to the settings
-     *
-     * @param $fieldDefinitions
-     * @return array
-     */
-    protected function addLanguageSelector($fieldDefinitions)
-    {
-        array_push($this->linkAttributes, 'language');
-        $languages = $this->getAllLanguages();
-        $options = ['<option value=""></option>'];
-        foreach ($languages as $language) {
-            $options[] = '<option value="' . $language->getLanguageId() . '"' . ($this->linkParts['language'] === $language->getLanguageId() ? ' selected="selected"' : '') . '>' . htmlspecialchars($language->getTitle()) . '</option>';
-        }
-
-        $fieldDefinitions['language'] = '
-				<form action="" name="llanguageform" id="llanguageform" class="t3js-dummyform form-horizontal">
-				<div class="form-group form-group-sm">
-				    <label class="col-xs-4 control-label">Specific Language</label>
-                    <div class="col-xs-8">
-                        <select name="llanguage" class="form-control">' . implode(CRLF, $options) . '</select>
-                    </div>
-                </div>
-				</form>
-';
-        return $fieldDefinitions;
     }
 
     /**
@@ -144,10 +70,14 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
      *
      * @return SiteLanguage[]
      */
-    protected function getAllLanguages()
+    protected function getAllLanguages($pageId = null)
     {
-        $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByPageId($this->linkParts['url']['pageuid'] ?? 0);
-        return $site->getAvailableLanguages($this->getBackendUser());
+        try {
+            $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByPageId($pageId ?? $this->linkParts['url']['pageuid'] ?? 0);
+            return $site->getAvailableLanguages($this->getBackendUser());
+        } catch (SiteNotFoundException $e) {
+            return [];
+        }
     }
 
     /**
@@ -162,15 +92,39 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
             // Set to the current link page id.
             $pageId = $this->linkParts['url']['pageuid'];
         }
+        if (!$pageId && isset($this->linkParts['url']['pageuid'])) {
+            // Set to the current link page id.
+            $pageId = $this->linkParts['url']['pageuid'];
+        }
         // Draw the record list IF there is a page id to expand:
         if ($pageId && MathUtility::canBeInterpretedAsInteger($pageId) && $this->getBackendUser()->isInWebMount($pageId)) {
             $pageId = (int)$pageId;
 
+            $linkService = GeneralUtility::makeInstance(LinkService::class);
             $activePageRecord = BackendUtility::getRecordWSOL('pages', $pageId);
             $this->view->assign('expandActivePage', true);
+            $languages = $this->getAllLanguages($pageId);
+            $availableLanguages = [];
+            $languageIdsToFindFreeModeItems = [];
+            foreach ($languages as $language) {
+                $availableLanguages[$language->getLanguageId()] = [
+                    'title' => $language->getTitle(),
+                    'flag' => $this->iconFactory->getIcon($language->getFlagIdentifier(), Icon::SIZE_SMALL),
+                ];
+                if ($language->getLanguageId() > 0) {
+                    $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $language->getLanguageId(),'pageuid' => (int)$pageId]);
+                    $languageIdsToFindFreeModeItems[] = $language->getLanguageId();
+                } else {
+                    $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => (int)$pageId]);
+                }
+            }
+            $this->view->assign('availableLanguages', $availableLanguages);
 
             // Create header for listing, showing the page title/icon
             $this->view->assign('activePage', $activePageRecord);
+            if ($this->isPageLinkable($activePageRecord)) {
+                $this->view->assign('activePageLink', $linkService->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => $pageId]));
+            }
             $this->view->assign('activePageTitle', BackendUtility::getRecordTitle('pages', $activePageRecord, true));
             $this->view->assign('activePageIcon', $this->iconFactory->getIconForRecord('pages', $activePageRecord, Icon::SIZE_SMALL)->render());
 
@@ -183,6 +137,25 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                 ->add(GeneralUtility::makeInstance(DeletedRestriction::class))
                 ->add(GeneralUtility::makeInstance(BackendWorkspaceRestriction::class));
 
+            $constraints = $queryBuilder->expr()->in(
+                'sys_language_uid',
+                $queryBuilder->createNamedParameter([0, -1], Connection::PARAM_INT_ARRAY)
+            );
+            if (!empty($languageIdsToFindFreeModeItems)) {
+                $constraints = $queryBuilder->expr()->orX(
+                    $constraints,
+                    $queryBuilder->expr()->andX(
+                        $queryBuilder->expr()->in(
+                            'sys_language_uid',
+                            $queryBuilder->createNamedParameter($languageIdsToFindFreeModeItems, Connection::PARAM_INT_ARRAY)
+                        ),
+                        $queryBuilder->expr()->eq(
+                            'l18n_parent',
+                            $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)
+                        )
+                    )
+                );
+            }
             $contentElements = $queryBuilder
                 ->select('*')
                 ->from('tt_content')
@@ -192,22 +165,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                             'pid',
                             $queryBuilder->createNamedParameter($pageId, \PDO::PARAM_INT)
                         ),
-                        $queryBuilder->expr()->orX(
-                            $queryBuilder->expr()->in(
-                                'sys_language_uid',
-                                $queryBuilder->createNamedParameter([0, -1], Connection::PARAM_INT_ARRAY)
-                            ),
-                            $queryBuilder->expr()->andX(
-                                $queryBuilder->expr()->gt(
-                                    'sys_language_uid',
-                                    $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)
-                                ),
-                                $queryBuilder->expr()->eq(
-                                    'l18n_parent',
-                                    $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)
-                                )
-                            )
-                        )
+                        $constraints
                     )
                 )
                 ->orderBy('colPos')
@@ -256,6 +214,11 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
             $this->view->assign('contentElements', $contentElements);
             $this->view->assign('groupedContentElements', $groupedContentElements);
         }
+    }
+
+    protected function isPageLinkable(array $page): bool
+    {
+        return !in_array((int)$page['doktype'], [255, 254, 199]);
     }
 
 }
