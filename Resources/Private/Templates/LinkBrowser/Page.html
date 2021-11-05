@@ -1,71 +1,58 @@
-<div class="element-browser-panel element-browser-main">
-	<div class="element-browser-main-sidebar">
-		<div class="element-browser-body">
-			<f:if condition="{temporaryTreeMountCancelLink}">
-				<p>
-					<a href="{temporaryTreeMountCancelLink}" class="btn btn-primary">
-						<f:translate key="LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.temporaryDBmount" />
-					</a>
-				</p>
-			</f:if>
-			{tree -> f:format.raw()}
-		</div>
-	</div>
-	<div class="element-browser-main-content">
-		<div class="element-browser-body">
-			<f:if condition="{expandActivePage}">
-				<f:if condition="{activePageLink}">
+<f:layout name="LinkBrowser" />
+
+<f:section name="Navigation">
+	<typo3-backend-component-page-browser
+			class="scaffold-content-navigation-component"
+			tree-actions="{treeActions -> f:format.json()}"
+			active-page="{expandedPage}">
+	</typo3-backend-component-page-browser>
+</f:section>
+
+<f:section name="Content">
+	<f:if condition="{expandActivePage}">
+		<f:if condition="{activePageLink}">
+			<f:then>
+				<h3>Link to page</h3>
+				<f:if condition="{f:count(subject: availableLanguages)}">
 					<f:then>
-						<h3>Link to page</h3>
 						<f:for each="{availableLanguages}" as="language">
 							<a href="{language.url}" class="t3js-pageLink btn btn-default">
 								<f:format.raw>
-									{language.flag} Link to {language.title}
+									{language.flag} <f:translate key="LLL:EXT:recordlist/Resources/Private/Language/locallang_browse_links.xlf:linkTo" arguments="{0: '{language.title}'}">{language.title}</f:translate>
 								</f:format.raw>
 							</a>
 						</f:for>
-
 					</f:then>
 					<f:else>
-						<div>{activePageIcon -> f:format.raw()} {activePageTitle -> f:format.raw()}</div>
+						<a href="{activePageLink}" class="t3js-pageLink btn btn-default">
+							<f:format.raw>
+								<f:translate key="LLL:EXT:recordlist/Resources/Private/Language/locallang_browse_links.xlf:linkTo" arguments="{0: '{activePageIcon} {activePageTitle}'}">{activePageIcon} {activePageTitle}</f:translate>
+							</f:format.raw>
+						</a>
 					</f:else>
 				</f:if>
+			</f:then>
+			<f:else>
+				<div>{activePageIcon -> f:format.raw()} {activePageTitle -> f:format.raw()}</div>
+			</f:else>
+		</f:if>
 
-				<h3><f:translate key="LLL:EXT:recordlist/Resources/Private/Language/locallang_browse_links.xlf:contentElements" /></h3>
-				<f:for each="{availableLanguages}" as="language">
-					<h4>{groupedByLanguage.flag -> f:format.raw()} {groupedByLanguage.label}</h4>
-				</f:for>
+		<h3 class="mt-4 mb-3"><f:translate key="LLL:EXT:recordlist/Resources/Private/Language/locallang_browse_links.xlf:contentElements" /></h3>
 
-				<ul class="list-tree list-tree-root list-tree-root-clean">
-					<li class="list-tree-control-open">
-						<f:for each="{groupedContentElements}" as="groupedByLanguage">
-							<h4>
-							<span class="list-tree-group">
-								<span class="list-tree-icon">{groupedByLanguage.flag -> f:format.raw()}</span>
-								<span class="list-tree-title">{groupedByLanguage.label}</span>
-							</span>
-							</h4>
-							<f:for each="{groupedByLanguage.items}" as="groupedContentByColPos">
-								<h5>Column: {f:if(condition: groupedContentByColPos.label, then: groupedContentByColPos.label, else: 'Unknown')}</h5>
-								<ul>
-									<f:for each="{groupedContentByColPos.items}" as="content">
-										<li{f:if(condition: content.isSelected, then: ' class="active"')}>
-										<span class="list-tree-group">
-											<span class="list-tree-icon">{content.icon -> f:format.raw()}</span>
-											<span class="list-tree-title">
-												<a href="{content.url}" class="t3js-pageLink">
-													{content.title -> f:format.raw()}
-												</a>
-											</span>
-										</span>
-										</li>
-									</f:for>
-								</ul>
-							</f:for>
-						</f:for>
-					</li>
-				</ul>
-			</f:if>
-		</div>
-	</div>
-</div>
+		<f:for each="{groupedContentElements}" as="groupedByLanguage">
+			<h5>
+				{groupedByLanguage.flag -> f:format.raw()} {groupedByLanguage.label}
+			</h5>
+			<f:for each="{groupedByLanguage.items}" as="groupedContentByColPos">
+				<strong>Column: {f:if(condition: groupedContentByColPos.label, then: groupedContentByColPos.label, else: 'Unknown')}</strong>
+				<div class="list-group">
+					<f:for each="{groupedContentByColPos.items}" as="content">
+						<a href="{content.url}" class="t3js-pageLink list-group-item list-group-item-action{f:if(condition: content.isSelected, then: ' active')}">
+							{content.icon -> f:format.raw()} {content.title -> f:format.raw()}
+						</a>
+					</f:for>
+				</div>
+			</f:for>
+		</f:for>
+	</f:if>
+</f:section>
