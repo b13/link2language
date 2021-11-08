@@ -12,8 +12,8 @@ $EM_CONF[$_EXTKEY] = array(
 	'author_company' => 'b13 GmbH',
 	'constraints' => array(
 		'depends' => array(
-			'typo3' => '9.5.0-10.4.99',
-			'recordlist' => '9.5.0-10.4.99',
+			'typo3' => '9.5.0-11.5.99',
+			'recordlist' => '9.5.0-11.5.99',
 		),
 	),
 );
