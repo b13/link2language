@@ -9,7 +9,7 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"B13\\Link2language\\": "Classes/"
+			"B13\\Link2Language\\": "Classes/"
 		}
 	},
 	"extra": {
