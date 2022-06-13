@@ -175,7 +175,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                 $colPos = (int)$contentElement['colPos'];
                 if (!isset($groupedContentElements[$languageId]['items'][$colPos])) {
                     $groupedContentElements[$languageId]['items'][$colPos] = [
-                        'label' => $colPosMapping[(int)$contentElement['colPos']],
+                        'label' => $colPosMapping[$colPos] ?? '',
                         'items' => []
                     ];
                 }
