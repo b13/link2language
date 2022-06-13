@@ -25,6 +25,7 @@ use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3\CMS\Recordlist\LinkHandler\LinkHandlerInterface;
 use TYPO3\CMS\Recordlist\Tree\View\LinkParameterProviderInterface;
 
@@ -175,7 +176,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                 $colPos = (int)$contentElement['colPos'];
                 if (!isset($groupedContentElements[$languageId]['items'][$colPos])) {
                     $groupedContentElements[$languageId]['items'][$colPos] = [
-                        'label' => $colPosMapping[(int)$contentElement['colPos']],
+                        'label' => $colPosMapping[$colPos] ?? '',
                         'items' => []
                     ];
                 }
