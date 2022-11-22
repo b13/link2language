@@ -91,11 +91,9 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                     'title' => $language->getTitle(),
                     'flag' => $this->iconFactory->getIcon($language->getFlagIdentifier(), Icon::SIZE_SMALL),
                 ];
+                $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $language->getLanguageId(),'pageuid' => (int)$pageId]);
                 if ($language->getLanguageId() > 0) {
-                    $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $language->getLanguageId(),'pageuid' => (int)$pageId]);
                     $languageIdsToFindFreeModeItems[] = $language->getLanguageId();
-                } else {
-                    $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => (int)$pageId]);
                 }
             }
             $this->view->assign('availableLanguages', $availableLanguages);
