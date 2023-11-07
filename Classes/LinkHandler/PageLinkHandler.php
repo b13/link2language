@@ -15,8 +15,8 @@ use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Backend\View\BackendLayoutView;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\Database\Query\Restriction\BackendWorkspaceRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\WorkspaceRestriction;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Imaging\Icon;
 use TYPO3\CMS\Core\Information\Typo3Version;
@@ -25,22 +25,34 @@ use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
+
+// Deprecated since TYPO3 v12, still used to ensure compatibility with older versions
+use TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler as BasePageLinkHandler;
 use TYPO3\CMS\Recordlist\LinkHandler\LinkHandlerInterface;
 use TYPO3\CMS\Recordlist\Tree\View\LinkParameterProviderInterface;
+
+// new for TYPO3 12 and Above
+/*use TYPO3\CMS\Backend\LinkHandler\PageLinkHandler as BasePageLinkHandler;
+use TYPO3\CMS\Backend\LinkHandler\LinkHandlerInterface;
+use TYPO3\CMS\Backend\Tree\View\LinkParameterProviderInterface;*/
 
 /**
  * Link handler for page (and content) links
  * with an additional option to show a dropdown for the selected language
  */
-class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler implements LinkHandlerInterface, LinkParameterProviderInterface
+class PageLinkHandler extends BasePageLinkHandler implements LinkHandlerInterface, LinkParameterProviderInterface
 {
 
-    public function render(ServerRequestInterface $request)
+    public function render(ServerRequestInterface $request): string
     {
-        if ((new Typo3Version())->getMajorVersion() < 11) {
-            $this->view->setTemplateRootPaths([200 => 'EXT:link2language/Resources/Private/Templates/LinkBrowser10']);
-        } else {
-            $this->view->setTemplateRootPaths([200 => 'EXT:link2language/Resources/Private/Templates/LinkBrowser']);
+        // Template Root Path in v12 is defined in TSconfig
+        switch((new Typo3Version())->getMajorVersion()) {
+            case '11':
+                $this->view->setTemplateRootPaths([200 => 'EXT:link2language/Resources/Private/Templates/LinkBrowser']);
+                break;
+            case '10':
+                $this->view->setTemplateRootPaths([200 => 'EXT:link2language/Resources/Private/Templates/LinkBrowser10']);
+                break;
         }
         return parent::render($request);
     }
@@ -113,7 +125,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
             $queryBuilder->getRestrictions()
                 ->removeAll()
                 ->add(GeneralUtility::makeInstance(DeletedRestriction::class))
-                ->add(GeneralUtility::makeInstance(BackendWorkspaceRestriction::class));
+                ->add(GeneralUtility::makeInstance(WorkspaceRestriction::class));
 
             $constraints = $queryBuilder->expr()->in(
                 'sys_language_uid',
@@ -147,17 +159,36 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                     )
                 )
                 ->orderBy('colPos')
-                ->addOrderBy('sorting')
-                ->execute()
-                ->fetchAll();
+                ->addOrderBy('sorting');
+
+            $versionInformation = GeneralUtility::makeInstance(Typo3Version::class);
+            if($versionInformation->getMajorVersion() < 12) {
+                $contentElements = $contentElements
+                    ->execute()
+                    ->fetchAll();
+            } else {
+                $contentElements = $contentElements
+                    ->executeQuery()
+                    ->fetchAllAssociative();
+            }
 
             $colPosArray = GeneralUtility::callUserFunction(BackendLayoutView::class . '->getColPosListItemsParsed', $pageId, $this);
             $languages = GeneralUtility::makeInstance(TranslationConfigurationProvider::class)->getSystemLanguages($pageId);
 
+            $versionInformation = GeneralUtility::makeInstance(Typo3Version::class);
+
             $colPosMapping = [];
-            foreach ($colPosArray as $colPos) {
-                $colPosMapping[(int)$colPos[1]] = $colPos[0];
+            // in v12 the colPosArray has changed
+            if ($versionInformation->getMajorVersion() < 12) {
+                foreach ($colPosArray as $colPos) {
+                    $colPosMapping[(int)$colPos[1]] = $colPos[0];
+                }
+            } else {
+                foreach ($colPosArray as $colPos) {
+                    $colPosMapping[(int)$colPos['value']] = $colPos['label'];
+                }
             }
+
             // Enrich list of records
             $groupedContentElements = [];
             foreach ($contentElements as &$contentElement) {
