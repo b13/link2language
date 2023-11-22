@@ -159,27 +159,17 @@ class PageLinkHandler extends BasePageLinkHandler implements LinkHandlerInterfac
                     )
                 )
                 ->orderBy('colPos')
-                ->addOrderBy('sorting');
-
-            $versionInformation = GeneralUtility::makeInstance(Typo3Version::class);
-            if($versionInformation->getMajorVersion() < 12) {
-                $contentElements = $contentElements
-                    ->execute()
-                    ->fetchAll();
-            } else {
-                $contentElements = $contentElements
-                    ->executeQuery()
-                    ->fetchAllAssociative();
-            }
+                ->addOrderBy('sorting')
+                ->execute()
+                ->fetchAll();
 
             $colPosArray = GeneralUtility::callUserFunction(BackendLayoutView::class . '->getColPosListItemsParsed', $pageId, $this);
             $languages = GeneralUtility::makeInstance(TranslationConfigurationProvider::class)->getSystemLanguages($pageId);
 
-            $versionInformation = GeneralUtility::makeInstance(Typo3Version::class);
-
-            $colPosMapping = [];
             // in v12 the colPosArray has changed
-            if ($versionInformation->getMajorVersion() < 12) {
+            $colPosMapping = [];
+            $typo3MajorVersion = (new Typo3Version())->getMajorVersion();
+            if ($typo3MajorVersion < 12) {
                 foreach ($colPosArray as $colPos) {
                     $colPosMapping[(int)$colPos[1]] = $colPos[0];
                 }
