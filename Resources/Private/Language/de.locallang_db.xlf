@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<xliff version="1.0">
+	<file>
+		<body>
+			<trans-unit id="link2language.headline" resname="link2language.headline">
+				<source>Link to page</source>
+				<target>Link auf Seite</target>
+			</trans-unit>
+		</body>
+	</file>
+</xliff>
