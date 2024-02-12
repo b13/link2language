@@ -35,13 +35,13 @@ use TYPO3\CMS\Recordlist\Tree\View\LinkParameterProviderInterface;
 class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler implements LinkHandlerInterface, LinkParameterProviderInterface
 {
 
-    public function render(ServerRequestInterface $request)
+    public function render(ServerRequestInterface $request): string
     {
-        if ((new Typo3Version())->getMajorVersion() < 11) {
-            $this->view->setTemplateRootPaths([200 => 'EXT:link2language/Resources/Private/Templates/LinkBrowser10']);
-        } else {
-            $this->view->setTemplateRootPaths([200 => 'EXT:link2language/Resources/Private/Templates/LinkBrowser']);
+        if ((new Typo3Version())->getMajorVersion() < 12) {
+            $this->view->setTemplateRootPaths([200 => 'EXT:link2language/Resources/Private/TemplateOverrides/Templates/LinkBrowser']);
         }
+
+        // page.tsconfig is used to set the template for v12 and above
         return parent::render($request);
     }
 
@@ -156,7 +156,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
 
             $colPosMapping = [];
             foreach ($colPosArray as $colPos) {
-                $colPosMapping[(int)$colPos[1]] = $colPos[0];
+                $colPosMapping[(int)($colPos[1] ?? $colPos["value"])] = $colPos[0] ?? $colPos['label'];
             }
             // Enrich list of records
             $groupedContentElements = [];
