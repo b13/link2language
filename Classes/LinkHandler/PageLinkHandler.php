@@ -156,7 +156,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
 
             $colPosMapping = [];
             foreach ($colPosArray as $colPos) {
-                $colPosMapping[(int)($colPos[1] ?? $colPos["value"])] = $colPos[0] ?? $colPos['label'];
+                $colPosMapping[(int)($colPos[1] ?? $colPos['value'])] = $colPos[0] ?? $colPos['label'];
             }
             // Enrich list of records
             $groupedContentElements = [];
