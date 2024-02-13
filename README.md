@@ -38,10 +38,6 @@ For details see the LICENSE file in this repository.
 
 If you find an issue, feel free to create an issue on GitHub or a pull request.
 
-## ToDo
-
-- The labels should be localizable.
-
 ### Credits
 
 This extension was created by [Benni Mack](https://github.com/bmack) for [b13 GmbH](https://b13.com).
