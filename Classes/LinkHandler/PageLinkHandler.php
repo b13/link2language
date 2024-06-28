@@ -85,7 +85,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
             $this->view->assign('expandActivePage', true);
             $languages = $this->getAllLanguages($pageId);
             $availableLanguages = [];
-            $languageIdsToFindFreeModeItems = [];
+            $languageIds = [];
             foreach ($languages as $language) {
                 $availableLanguages[$language->getLanguageId()] = [
                     'title' => $language->getTitle(),
@@ -93,7 +93,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                 ];
                 $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $language->getLanguageId(),'pageuid' => (int)$pageId]);
                 if ($language->getLanguageId() > 0) {
-                    $languageIdsToFindFreeModeItems[] = $language->getLanguageId();
+                    $languageIds[] = $language->getLanguageId();
                 }
             }
             $this->view->assign('availableLanguages', $availableLanguages);
@@ -115,41 +115,23 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                 ->add(GeneralUtility::makeInstance(DeletedRestriction::class))
                 ->add(GeneralUtility::makeInstance(BackendWorkspaceRestriction::class));
 
-            $constraints = $queryBuilder->expr()->in(
-                'sys_language_uid',
-                $queryBuilder->createNamedParameter([0, -1], Connection::PARAM_INT_ARRAY)
-            );
-            if (!empty($languageIdsToFindFreeModeItems)) {
-                $constraints = $queryBuilder->expr()->orX(
-                    $constraints,
-                    $queryBuilder->expr()->andX(
-                        $queryBuilder->expr()->in(
-                            'sys_language_uid',
-                            $queryBuilder->createNamedParameter($languageIdsToFindFreeModeItems, Connection::PARAM_INT_ARRAY)
-                        ),
-                        $queryBuilder->expr()->eq(
-                            'l18n_parent',
-                            $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)
-                        )
-                    )
-                );
-            }
             $contentElements = $queryBuilder
                 ->select('*')
                 ->from('tt_content')
                 ->where(
-                    $queryBuilder->expr()->andX(
                         $queryBuilder->expr()->eq(
                             'pid',
                             $queryBuilder->createNamedParameter($pageId, \PDO::PARAM_INT)
                         ),
-                        $constraints
+                    $queryBuilder->expr()->in(
+                        'sys_language_uid',
+                        $queryBuilder->createNamedParameter(array_merge([0, -1], $languageIds), Connection::PARAM_INT_ARRAY)
                     )
                 )
                 ->orderBy('colPos')
                 ->addOrderBy('sorting')
-                ->execute()
-                ->fetchAll();
+                ->executeQuery()
+                ->fetchAllAssociative();
 
             $colPosArray = GeneralUtility::callUserFunction(BackendLayoutView::class . '->getColPosListItemsParsed', $pageId, $this);
             $languages = GeneralUtility::makeInstance(TranslationConfigurationProvider::class)->getSystemLanguages($pageId);
