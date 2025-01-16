@@ -80,6 +80,11 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
         if ($pageId && MathUtility::canBeInterpretedAsInteger($pageId) && $this->getBackendUser()->isInWebMount($pageId)) {
             $pageId = (int)$pageId;
 
+            // Get the language of the source record
+            $linkBrowserParams = $this->linkBrowser->getParameters();
+            $sourceRecord = BackendUtility::getRecord($linkBrowserParams['table'], $linkBrowserParams['uid']);
+            $sourceLanguageUid = $sourceRecord['sys_language_uid'] ?? 0;
+
             $linkService = GeneralUtility::makeInstance(LinkService::class);
             $activePageRecord = BackendUtility::getRecordWSOL('pages', $pageId);
             $this->view->assign('expandActivePage', true);
@@ -91,7 +96,8 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                     'title' => $language->getTitle(),
                     'flag' => $this->iconFactory->getIcon($language->getFlagIdentifier(), Icon::SIZE_SMALL),
                 ];
-                $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $language->getLanguageId(),'pageuid' => (int)$pageId]);
+                $languageParameter = $sourceLanguageUid !== $language->getLanguageId() ? '&L=' . $language->getLanguageId() : '';
+                $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => $languageParameter,'pageuid' => (int)$pageId]);
                 if ($language->getLanguageId() > 0) {
                     $languageIds[] = $language->getLanguageId();
                 }
@@ -160,7 +166,9 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                     ];
                 }
 
-                $contentElement['url'] = GeneralUtility::makeInstance(LinkService::class)->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $languageId, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
+                $languageParameter = $sourceLanguageUid !== $languageId ? '&L=' . $languageId : '';
+
+                $contentElement['url'] = GeneralUtility::makeInstance(LinkService::class)->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => $languageParameter, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
                 $contentElement['isSelected'] = !empty($this->linkParts) && (int)($this->linkParts['url']['fragment'] ?? 0) === (int)$contentElement['uid'];
                 $contentElement['icon'] = $this->iconFactory->getIconForRecord('tt_content', $contentElement, Icon::SIZE_SMALL)->render();
                 $contentElement['title'] = BackendUtility::getRecordTitle('tt_content', $contentElement, true);
