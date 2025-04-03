@@ -54,7 +54,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
     {
         try {
             $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByPageId($pageId ?? $this->linkParts['url']['pageuid'] ?? 0);
-            return $site->getAvailableLanguages($this->getBackendUser());
+            return $site->getAvailableLanguages($this->getBackendUser(), true);
         } catch (SiteNotFoundException $e) {
             return [];
         }
@@ -91,7 +91,18 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                     'title' => $language->getTitle(),
                     'flag' => $this->iconFactory->getIcon($language->getFlagIdentifier(), Icon::SIZE_SMALL),
                 ];
-                $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $language->getLanguageId(),'pageuid' => (int)$pageId]);
+                if ($language->getLanguageId() > -1) {
+                    $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString([
+                        'type' => LinkService::TYPE_PAGE,
+                        'parameters' => '&L=' . $language->getLanguageId(),
+                        'pageuid' => (int)$pageId
+                    ]);
+                } else {
+                    $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString([
+                        'type' => LinkService::TYPE_PAGE,
+                        'pageuid' => (int)$pageId
+                    ]);
+                }
                 if ($language->getLanguageId() > 0) {
                     $languageIds[] = $language->getLanguageId();
                 }
@@ -142,6 +153,11 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
             }
             // Enrich list of records
             $groupedContentElements = [];
+            $groupedContentElements[-1] = [
+                'label' => $languages[-1]['title'],
+                'flag' => $this->iconFactory->getIcon($languages[-1]['flagIcon'], Icon::SIZE_SMALL),
+                'items' => []
+            ];
             foreach ($contentElements as &$contentElement) {
                 $languageId = (int)$contentElement['sys_language_uid'];
                 if (!isset($groupedContentElements[$languageId])) {
@@ -165,6 +181,11 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                 $contentElement['icon'] = $this->iconFactory->getIconForRecord('tt_content', $contentElement, Icon::SIZE_SMALL)->render();
                 $contentElement['title'] = BackendUtility::getRecordTitle('tt_content', $contentElement, true);
                 $groupedContentElements[$languageId]['items'][$colPos]['items'][] = $contentElement;
+                if ($languageId === 0) {
+                    $contentElementCopy = $contentElement;
+                    $contentElementCopy['url'] = GeneralUtility::makeInstance(LinkService::class)->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
+                    $groupedContentElements[-1]['items'][$colPos]['items'][] = $contentElementCopy;
+                }
             }
             ksort($groupedContentElements);
             $this->view->assign('contentElements', $contentElements);
