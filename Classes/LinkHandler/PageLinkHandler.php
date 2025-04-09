@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace B13\Link2Language\LinkHandler;
 
 /*
@@ -9,40 +12,36 @@ namespace B13\Link2Language\LinkHandler;
  * of the License, or any later version.
  */
 
-use Psr\Http\Message\ServerRequestInterface;
+use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\ParameterType;
 use TYPO3\CMS\Backend\Configuration\TranslationConfigurationProvider;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Backend\View\BackendLayoutView;
-use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\Database\Query\Restriction\BackendWorkspaceRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\WorkspaceRestriction;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Imaging\Icon;
-use TYPO3\CMS\Core\Information\Typo3Version;
 use TYPO3\CMS\Core\LinkHandling\LinkService;
 use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
-use TYPO3\CMS\Recordlist\LinkHandler\LinkHandlerInterface;
-use TYPO3\CMS\Recordlist\Tree\View\LinkParameterProviderInterface;
 
 /**
  * Link handler for page (and content) links
  * with an additional option to show a dropdown for the selected language
  */
-class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler implements LinkHandlerInterface, LinkParameterProviderInterface
+class PageLinkHandler extends \TYPO3\CMS\Backend\LinkHandler\PageLinkHandler
 {
-
-    public function render(ServerRequestInterface $request): string
-    {
-        if ((new Typo3Version())->getMajorVersion() < 12) {
-            $this->view->setTemplateRootPaths([200 => 'EXT:link2language/Resources/Private/TemplateOverrides/Templates/LinkBrowser']);
-        }
-
-        // page.tsconfig is used to set the template for v12 and above
-        return parent::render($request);
+    public function __construct(
+        private readonly TranslationConfigurationProvider $translationConfigurationProvider,
+        private readonly BackendLayoutView $backendLayoutView,
+        private readonly LinkService $linkService,
+        private readonly SiteFinder $siteFinder,
+        private readonly ConnectionPool $connectionPool,
+    ) {
+        parent::__construct();
     }
 
     /**
@@ -53,7 +52,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
     protected function getAllLanguages($pageId = null)
     {
         try {
-            $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByPageId($pageId ?? $this->linkParts['url']['pageuid'] ?? 0);
+            $site = $this->siteFinder->getSiteByPageId($pageId ?? $this->linkParts['url']['pageuid'] ?? 0);
             return $site->getAvailableLanguages($this->getBackendUser(), true);
         } catch (SiteNotFoundException $e) {
             return [];
@@ -80,7 +79,6 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
         if ($pageId && MathUtility::canBeInterpretedAsInteger($pageId) && $this->getBackendUser()->isInWebMount($pageId)) {
             $pageId = (int)$pageId;
 
-            $linkService = GeneralUtility::makeInstance(LinkService::class);
             $activePageRecord = BackendUtility::getRecordWSOL('pages', $pageId);
             $this->view->assign('expandActivePage', true);
             $languages = $this->getAllLanguages($pageId);
@@ -92,15 +90,15 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                     'flag' => $this->iconFactory->getIcon($language->getFlagIdentifier(), Icon::SIZE_SMALL),
                 ];
                 if ($language->getLanguageId() > -1) {
-                    $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString([
+                    $availableLanguages[$language->getLanguageId()]['url'] = $this->linkService->asString([
                         'type' => LinkService::TYPE_PAGE,
                         'parameters' => '&L=' . $language->getLanguageId(),
-                        'pageuid' => (int)$pageId
+                        'pageuid' => (int)$pageId,
                     ]);
                 } else {
-                    $availableLanguages[$language->getLanguageId()]['url'] = $linkService->asString([
+                    $availableLanguages[$language->getLanguageId()]['url'] = $this->linkService->asString([
                         'type' => LinkService::TYPE_PAGE,
-                        'pageuid' => (int)$pageId
+                        'pageuid' => (int)$pageId,
                     ]);
                 }
                 if ($language->getLanguageId() > 0) {
@@ -112,31 +110,30 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
             // Create header for listing, showing the page title/icon
             $this->view->assign('activePage', $activePageRecord);
             if ($this->isPageLinkable($activePageRecord)) {
-                $this->view->assign('activePageLink', $linkService->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => $pageId]));
+                $this->view->assign('activePageLink', $this->linkService->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => $pageId]));
             }
             $this->view->assign('activePageTitle', BackendUtility::getRecordTitle('pages', $activePageRecord, true));
             $this->view->assign('activePageIcon', $this->iconFactory->getIconForRecord('pages', $activePageRecord, Icon::SIZE_SMALL)->render());
 
             // Look up tt_content elements from the expanded page
-            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
-                ->getQueryBuilderForTable('tt_content');
+            $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tt_content');
 
             $queryBuilder->getRestrictions()
                 ->removeAll()
                 ->add(GeneralUtility::makeInstance(DeletedRestriction::class))
-                ->add(GeneralUtility::makeInstance(BackendWorkspaceRestriction::class));
+                ->add(GeneralUtility::makeInstance(WorkspaceRestriction::class));
 
             $contentElements = $queryBuilder
                 ->select('*')
                 ->from('tt_content')
                 ->where(
-                        $queryBuilder->expr()->eq(
-                            'pid',
-                            $queryBuilder->createNamedParameter($pageId, \PDO::PARAM_INT)
-                        ),
+                    $queryBuilder->expr()->eq(
+                        'pid',
+                        $queryBuilder->createNamedParameter($pageId, ParameterType::INTEGER)
+                    ),
                     $queryBuilder->expr()->in(
                         'sys_language_uid',
-                        $queryBuilder->createNamedParameter(array_merge([0, -1], $languageIds), Connection::PARAM_INT_ARRAY)
+                        $queryBuilder->createNamedParameter(array_merge([0, -1], $languageIds), ArrayParameterType::INTEGER)
                     )
                 )
                 ->orderBy('colPos')
@@ -144,19 +141,23 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                 ->executeQuery()
                 ->fetchAllAssociative();
 
-            $colPosArray = GeneralUtility::callUserFunction(BackendLayoutView::class . '->getColPosListItemsParsed', $pageId, $this);
-            $languages = GeneralUtility::makeInstance(TranslationConfigurationProvider::class)->getSystemLanguages($pageId);
+            $backendLayout = $this->backendLayoutView->getBackendLayoutForPage($pageId);
+            $colPosArray = [];
+            if ($backendLayout !==  null) {
+                $colPosArray = $backendLayout->getUsedColumns();
+            }
+            $languages = $this->translationConfigurationProvider->getSystemLanguages($pageId);
 
             $colPosMapping = [];
-            foreach ($colPosArray as $colPos) {
-                $colPosMapping[(int)($colPos[1] ?? $colPos['value'])] = $colPos[0] ?? $colPos['label'];
+            foreach ($colPosArray as $colPos => $label) {
+                $colPosMapping[(int)($colPos)] = $label;
             }
             // Enrich list of records
             $groupedContentElements = [];
             $groupedContentElements[-1] = [
                 'label' => $languages[-1]['title'],
                 'flag' => $this->iconFactory->getIcon($languages[-1]['flagIcon'], Icon::SIZE_SMALL),
-                'items' => []
+                'items' => [],
             ];
             foreach ($contentElements as &$contentElement) {
                 $languageId = (int)$contentElement['sys_language_uid'];
@@ -164,7 +165,7 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                     $groupedContentElements[$languageId] = [
                         'label' => $languages[$languageId]['title'],
                         'flag' => $this->iconFactory->getIcon($languages[$languageId]['flagIcon'], Icon::SIZE_SMALL),
-                        'items' => []
+                        'items' => [],
                     ];
                 }
 
@@ -172,18 +173,24 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
                 if (!isset($groupedContentElements[$languageId]['items'][$colPos])) {
                     $groupedContentElements[$languageId]['items'][$colPos] = [
                         'label' => $colPosMapping[$colPos] ?? '',
-                        'items' => []
+                        'items' => [],
                     ];
                 }
 
-                $contentElement['url'] = GeneralUtility::makeInstance(LinkService::class)->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $languageId, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
+                $contentElement['url'] = $this->linkService->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $languageId, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
                 $contentElement['isSelected'] = !empty($this->linkParts) && (int)($this->linkParts['url']['fragment'] ?? 0) === (int)$contentElement['uid'];
                 $contentElement['icon'] = $this->iconFactory->getIconForRecord('tt_content', $contentElement, Icon::SIZE_SMALL)->render();
                 $contentElement['title'] = BackendUtility::getRecordTitle('tt_content', $contentElement, true);
                 $groupedContentElements[$languageId]['items'][$colPos]['items'][] = $contentElement;
                 if ($languageId === 0) {
                     $contentElementCopy = $contentElement;
-                    $contentElementCopy['url'] = GeneralUtility::makeInstance(LinkService::class)->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
+                    $contentElementCopy['url'] = $this->linkService->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
+                    if (!isset($groupedContentElements[-1]['items'][$colPos])) {
+                        $groupedContentElements[-1]['items'][$colPos] = [
+                            'label' => $colPosMapping[$colPos] ?? '',
+                            'items' => [],
+                        ];
+                    }
                     $groupedContentElements[-1]['items'][$colPos]['items'][] = $contentElementCopy;
                 }
             }
@@ -191,11 +198,6 @@ class PageLinkHandler extends \TYPO3\CMS\Recordlist\LinkHandler\PageLinkHandler 
             $this->view->assign('contentElements', $contentElements);
             $this->view->assign('groupedContentElements', $groupedContentElements);
         }
-    }
-
-    protected function isPageLinkable(array $page): bool
-    {
-        return !in_array((int)$page['doktype'], [255, 254, 199]);
     }
 
 }
