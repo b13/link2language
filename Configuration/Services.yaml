@@ -1,0 +1,10 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  B13\Link2Language\:
+    resource: '../Classes/*'
+  B13\Link2Language\LinkHandler\PageLinkHandler:
+    public: true

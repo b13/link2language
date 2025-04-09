@@ -1,20 +1,38 @@
 {
-	"name": "b13/link2language",
-	"type": "typo3-cms-extension",
-	"description": "Set Links with a specific language parameter",
-	"license": "GPL-2.0+",
-	"keywords": ["TYPO3 CMS", "Link Handler", "Links", "Language"],
-	"require": {
-		"typo3/cms-core": "^11.5 || ^12.4"
-	},
-	"autoload": {
-		"psr-4": {
-			"B13\\Link2Language\\": "Classes/"
-		}
-	},
-	"extra": {
-		"typo3/cms": {
-			"extension-key": "link2language"
-		}
-	}
+    "name": "b13/link2language",
+    "type": "typo3-cms-extension",
+    "description": "Set Links with a specific language parameter",
+    "license": "GPL-2.0+",
+    "keywords": [
+        "TYPO3 CMS",
+        "Link Handler",
+        "Links",
+        "Language"
+    ],
+    "require": {
+        "typo3/cms-backend": "^12.4 || ^13.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "B13\\Link2Language\\": "Classes/"
+        }
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "link2language",
+            "web-dir": ".Build/public"
+        }
+    },
+    "require-dev": {
+        "saschaegerer/phpstan-typo3": "^1.8 || ^2.1",
+        "typo3/coding-standards": "^0.8.0"
+    },
+    "config": {
+        "vendor-dir": ".Build/vendor",
+        "bin-dir": ".Build/bin",
+        "allow-plugins": {
+            "typo3/cms-composer-installers": true,
+            "typo3/class-alias-loader": true
+        }
+    }
 }
