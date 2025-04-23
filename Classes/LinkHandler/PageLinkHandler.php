@@ -150,7 +150,7 @@ class PageLinkHandler extends \TYPO3\CMS\Backend\LinkHandler\PageLinkHandler
 
             $colPosMapping = [];
             foreach ($colPosArray as $colPos => $label) {
-                $colPosMapping[(int)($colPos)] = $label;
+                $colPosMapping[(int)($colPos)] = $this->getLanguageService()->sL($label);
             }
             // Enrich list of records
             $groupedContentElements = [];
