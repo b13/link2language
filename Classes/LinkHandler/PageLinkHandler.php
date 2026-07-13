@@ -22,6 +22,7 @@ use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\WorkspaceRestriction;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Imaging\Icon;
+use TYPO3\CMS\Core\Imaging\IconSize;
 use TYPO3\CMS\Core\LinkHandling\LinkService;
 use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
 use TYPO3\CMS\Core\Site\SiteFinder;
@@ -84,10 +85,12 @@ class PageLinkHandler extends \TYPO3\CMS\Backend\LinkHandler\PageLinkHandler
             $languages = $this->getAllLanguages($pageId);
             $availableLanguages = [];
             $languageIds = [];
+            $iconSizeSmall = class_exists(IconSize::class) ? IconSize::SMALL : constant(Icon::class . '::SIZE_SMALL');
+
             foreach ($languages as $language) {
                 $availableLanguages[$language->getLanguageId()] = [
                     'title' => $language->getTitle(),
-                    'flag' => $this->iconFactory->getIcon($language->getFlagIdentifier(), Icon::SIZE_SMALL),
+                    'flag' => $this->iconFactory->getIcon($language->getFlagIdentifier(), $iconSizeSmall),
                 ];
                 if ($language->getLanguageId() > -1) {
                     $availableLanguages[$language->getLanguageId()]['url'] = $this->linkService->asString([
@@ -113,7 +116,7 @@ class PageLinkHandler extends \TYPO3\CMS\Backend\LinkHandler\PageLinkHandler
                 $this->view->assign('activePageLink', $this->linkService->asString(['type' => LinkService::TYPE_PAGE, 'pageuid' => $pageId]));
             }
             $this->view->assign('activePageTitle', BackendUtility::getRecordTitle('pages', $activePageRecord, true));
-            $this->view->assign('activePageIcon', $this->iconFactory->getIconForRecord('pages', $activePageRecord, Icon::SIZE_SMALL)->render());
+            $this->view->assign('activePageIcon', $this->iconFactory->getIconForRecord('pages', $activePageRecord, $iconSizeSmall)->render());
 
             // Look up tt_content elements from the expanded page
             $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tt_content');
@@ -156,7 +159,7 @@ class PageLinkHandler extends \TYPO3\CMS\Backend\LinkHandler\PageLinkHandler
             $groupedContentElements = [];
             $groupedContentElements[-1] = [
                 'label' => $languages[-1]['title'],
-                'flag' => $this->iconFactory->getIcon($languages[-1]['flagIcon'], Icon::SIZE_SMALL),
+                'flag' => $this->iconFactory->getIcon($languages[-1]['flagIcon'], $iconSizeSmall),
                 'items' => [],
             ];
             foreach ($contentElements as &$contentElement) {
@@ -164,7 +167,7 @@ class PageLinkHandler extends \TYPO3\CMS\Backend\LinkHandler\PageLinkHandler
                 if (!isset($groupedContentElements[$languageId])) {
                     $groupedContentElements[$languageId] = [
                         'label' => $languages[$languageId]['title'],
-                        'flag' => $this->iconFactory->getIcon($languages[$languageId]['flagIcon'], Icon::SIZE_SMALL),
+                        'flag' => $this->iconFactory->getIcon($languages[$languageId]['flagIcon'], $iconSizeSmall),
                         'items' => [],
                     ];
                 }
@@ -179,7 +182,7 @@ class PageLinkHandler extends \TYPO3\CMS\Backend\LinkHandler\PageLinkHandler
 
                 $contentElement['url'] = $this->linkService->asString(['type' => LinkService::TYPE_PAGE, 'parameters' => '&L=' . $languageId, 'pageuid' => (int)$pageId, 'fragment' => $contentElement['uid']]);
                 $contentElement['isSelected'] = !empty($this->linkParts) && (int)($this->linkParts['url']['fragment'] ?? 0) === (int)$contentElement['uid'];
-                $contentElement['icon'] = $this->iconFactory->getIconForRecord('tt_content', $contentElement, Icon::SIZE_SMALL)->render();
+                $contentElement['icon'] = $this->iconFactory->getIconForRecord('tt_content', $contentElement, $iconSizeSmall)->render();
                 $contentElement['title'] = BackendUtility::getRecordTitle('tt_content', $contentElement, true);
                 $groupedContentElements[$languageId]['items'][$colPos]['items'][] = $contentElement;
                 if ($languageId === 0) {
