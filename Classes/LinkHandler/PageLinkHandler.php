@@ -46,6 +46,34 @@ class PageLinkHandler extends \TYPO3\CMS\Backend\LinkHandler\PageLinkHandler
     }
 
     /**
+     * The parent implementation rebuilds the current link from pageuid and fragment
+     * only, so the "L" parameter (and any other additional parameters) would be lost
+     * when the link attributes are updated via the "Update" button.
+     *
+     * @return string[] Array of body-tag attributes
+     */
+    public function getBodyTagAttributes()
+    {
+        if (count($this->linkParts) === 0 || empty($this->linkParts['url']['pageuid'])) {
+            return [];
+        }
+        $urlParts = [
+            'type' => LinkService::TYPE_PAGE,
+            'pageuid' => (int)$this->linkParts['url']['pageuid'],
+            'fragment' => $this->linkParts['url']['fragment'] ?? '',
+        ];
+        if (isset($this->linkParts['url']['pagetype']) && strlen((string)$this->linkParts['url']['pagetype']) > 0) {
+            $urlParts['pagetype'] = $this->linkParts['url']['pagetype'];
+        }
+        if (!empty($this->linkParts['url']['parameters'])) {
+            $urlParts['parameters'] = $this->linkParts['url']['parameters'];
+        }
+        return [
+            'data-linkbrowser-current-link' => $this->linkService->asString($urlParts),
+        ];
+    }
+
+    /**
      * Short-hand function to select all registered languages
      *
      * @return SiteLanguage[]
