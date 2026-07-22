@@ -4,14 +4,14 @@ $EM_CONF[$_EXTKEY] = [
     'title' => 'Links to specific languages',
     'description' => 'Allows to select links to pages or content elements for a specific language',
     'category' => 'be',
-    'version' => '4.0.3',
+    'version' => '5.0.0',
     'state' => 'stable',
     'author' => 'b13 GmbH',
     'author_email' => 'typo3@b13.com',
     'author_company' => 'b13 GmbH',
     'constraints' => [
         'depends' => [
-            'typo3' => '13.4.0-14.3.99',
+            'typo3' => '13.4.0-14.4.99',
         ],
     ],
 ];

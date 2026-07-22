@@ -2,7 +2,7 @@
     "name": "b13/link2language",
     "type": "typo3-cms-extension",
     "description": "Set Links with a specific language parameter",
-    "license": "GPL-2.0+",
+    "license": "GPL-2.0-or-later",
     "keywords": [
         "TYPO3 CMS",
         "Link Handler",
@@ -20,7 +20,11 @@
     "extra": {
         "typo3/cms": {
             "extension-key": "link2language",
-            "web-dir": ".Build/public"
+            "version": "5.0.0",
+            "web-dir": ".Build/public",
+            "Package": {
+                "providesPackages": {}
+            }
         }
     },
     "require-dev": {
