@@ -23,6 +23,20 @@ always enabled when the extension is installed, no configuration needed.
 In addition, linking to a specific content elements which are in a specific language
 is also possible in the link picker for pages.
 
+## Menu entries pointing to a page in a specific language (TYPO3 v14+)
+
+Since TYPO3 v14, the page type "Link" (formerly "External URL") supports any
+link that can be created via the link wizard (see TYPO3 core feature
+[#17406](https://docs.typo3.org/c/typo3/cms-core/main/en-us/Changelog/14.0/Feature-17406-EnhancePageTypeLinkToFullySupportTypolinks.html)).
+
+Combined with this extension, this allows menu entries that always point to a
+specific language of a target page: Create a page of type "Link", open the
+link wizard for its target, and use the language button of the target page
+(e.g. "English"). TYPO3 then renders the menu entry as a link to the English
+version of the target page, regardless of the language the visitor is
+currently browsing in — useful e.g. for footer links to pages that are only
+available in some of the site's languages.
+
 ## How to install this extension?
 
 Use `composer req b13/link2language` or install it via TYPO3's Extension Manager from the
