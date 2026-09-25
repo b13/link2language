@@ -74,15 +74,39 @@ class PageLinkHandler extends \TYPO3\CMS\Backend\LinkHandler\PageLinkHandler
     }
 
     /**
-     * Short-hand function to select all registered languages
+     * Short-hand function to select all registered languages with page translation
      *
      * @return SiteLanguage[]
      */
-    protected function getAllLanguages($pageId = null)
+    protected function getAllLanguages(int $pageId)
     {
         try {
-            $site = $this->siteFinder->getSiteByPageId($pageId ?? $this->linkParts['url']['pageuid'] ?? 0);
-            return $site->getAvailableLanguages($this->getBackendUser(), true);
+            $site = $this->siteFinder->getSiteByPageId($pageId);
+            $languages = $site->getAvailableLanguages($this->getBackendUser(), true);
+            $queryBuilder = $this->connectionPool->getQueryBuilderForTable('pages');
+            $queryBuilder->getRestrictions()->removeAll()->add(new DeletedRestriction());
+            $translations = $queryBuilder->select('sys_language_uid')
+                ->from('pages')
+                ->where(
+                    $queryBuilder->expr()->eq(
+                        'l10n_parent',
+                        $queryBuilder->createNamedParameter($pageId, ParameterType::INTEGER)
+                    )
+                )
+                ->executeQuery()
+                ->fetchFirstColumn();
+            $availableLanguages = [];
+            /** @var SiteLanguage $language */
+            foreach ($languages as $language) {
+                if ($language->getLanguageId() < 1) {
+                    $availableLanguages[$language->getLanguageId()] = $language;
+                    continue;
+                }
+                if (in_array($language->getLanguageId(), $translations, true)) {
+                    $availableLanguages[$language->getLanguageId()] = $language;
+                }
+            }
+            return $availableLanguages;
         } catch (SiteNotFoundException $e) {
             return [];
         }
