@@ -20,7 +20,7 @@
     "extra": {
         "typo3/cms": {
             "extension-key": "link2language",
-            "version": "5.0.0",
+            "version": "5.0.1",
             "web-dir": ".Build/public",
             "Package": {
                 "providesPackages": {}
